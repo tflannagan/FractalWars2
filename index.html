@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FractalWars 2 | Ty</title>
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sankofa+Display&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: "Sankofa Display", sans-serif !important;
+        }
+        body {
+            font-family: "Sankofa Display", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0c0c1d;
+            color: #00ffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .main-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            transition: all 0.3s ease;
+        }
+        .simulation-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+        }
+        #simulationCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .overlay {
+            position: absolute;
+            padding: 8px;
+            background-color: rgba(12, 12, 29, 0.8);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            border: 1px solid #00ffff;
+        }
+        #statsOverlay {
+            bottom: 10px;
+            left: 10px;
+        }
+        .side-panel {
+            width: 250px;
+            background-color: rgba(26, 26, 58, 0.9);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: transform 0.3s ease, width 0.3s ease;
+            position: relative;
+        }
+        .side-panel.collapsed {
+            transform: translateX(100%);
+            width: 0;
+            padding: 0;
+        }
+        .toggle-panel {
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(26, 26, 58, 0.9);
+            color: #00ffff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px 0 0 5px;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+        .toggle-panel:hover {
+            background-color: rgba(0, 255, 255, 0.2);
+        }
+        .toggle-panel.collapsed {
+            transform: translateY(-50%) rotate(180deg);
+            border-radius: 0 5px 5px 0;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        button {
+            font-family: Arial, sans-serif;
+            font-size: 1rem;
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #1a1a3a;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:hover {
+            background-color: #00ffff;
+            color: #1a1a3a;
+        }
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+            background-color: rgba(26, 26, 58, 0.8);
+            border-radius: 5px;
+            padding: 10px;
+            border: 1px solid #00ffff;
+        }
+        .theme-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .theme-option:hover {
+            transform: scale(1.1);
+        }
+        .theme-option.selected::after {
+            content: '✓';
+            color: white;
+            font-size: 24px;
+            text-shadow: 0 0 3px black;
+        }
+        .color-preview {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 -2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="simulation-container">
+            <canvas id="simulationCanvas"></canvas>
+            <div id="statsOverlay" class="overlay"></div>
+        </div>
+        <div class="side-panel">
+            <button class="toggle-panel">◀</button>
+            <div class="controls">
+                <button id="startStopBtn">Start</button>
+                <button id="resetBtn"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#00ffff"><path d="M480-90q-70 0-131.13-26.6-61.14-26.6-106.4-71.87-45.27-45.26-71.87-106.4Q144-356 144-426h72q0 109 77.5 186.5T480-162q109 0 186.5-77.5T744-426q0-109-77.5-186.5T479.61-690H474l51 51-51 51-138-138 138-138 51 51-52 51h7q70 0 131.13 26.6 61.14 26.6 106.4 71.87 45.27 45.26 71.87 106.4Q816-496 816-426t-26.6 131.13q-26.6 61.14-71.87 106.4-45.26 45.27-106.4 71.87Q550-90 480-90Z"/></svg></button>
+                <input type="range" id="speedControl" min="1" max="100" value="50">
+                <span id="speedValue">50</span>
+            </div>
+            <div class="theme-selector" id="themeSelector"></div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statsOverlay = document.getElementById('statsOverlay');
+        const sidePanel = document.querySelector('.side-panel');
+        const togglePanel = document.querySelector('.toggle-panel');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const themeSelector = document.getElementById('themeSelector');
+        // Variables
+        let width, height;
+        let isRunning = false;
+        let rootNodes = [];
+        let particles = [];
+        let battleNodes = [];
+        let simulationSpeed = 1;
+
+        const colorThemes = [
+            { name: 'Neon Twilight', primary: '#FF00FF', secondary: '#00FFFF', tertiary: '#8A2BE2', quaternary: '#4169E1', background: '#0C0C0C' },
+            { name: 'Emerald Enigma', primary: '#00A000', secondary: '#32CD32', tertiary: '#3CB371', quaternary: '#2E8B57', background: '#002200' },
+            { name: 'Violet Vortex', primary: '#8A2BE2', secondary: '#9400D3', tertiary: '#9370DB', quaternary: '#BA55D3', background: '#2A004F' },
+            { name: 'Sapphire Seas', primary: '#1E90FF', secondary: '#4169E1', tertiary: '#1E90FF', quaternary: '#00BFFF', background: '#00008B' }
+        ];
+        let currentTheme = colorThemes[0];
+        let frameCount = 0;
+        
+        // Classes
+        class Node {
+            constructor(x, y, angle, length, depth = 0, color, rootIndex) {
+                this.x = x;
+                this.y = y;
+                this.targetX = x + Math.cos(angle) * length;
+                this.targetY = y + Math.sin(angle) * length;
+                this.currentLength = 0;
+                this.targetLength = length;
+                this.angle = angle;
+                this.depth = depth;
+                this.children = [];
+                this.growthSpeed = 1 * simulationSpeed;
+                this.branchProbability = 0.05 * simulationSpeed * (1 - this.depth / this.maxDepth);
+                this.maxChildren = 3;
+                this.maxDepth = Math.floor(20 + Math.sqrt(width * height) / 100);
+                this.color = color;
+                this.rootIndex = rootIndex;
+                this.energy = 100;
+                this.particleCount = 0;
+                this.particlesNeededToGrow = 3;
+                this.blocked = false;
+                this.blockingBattleNode = null;
+            }
+
+            update() {
+                if (!this.blocked) {
+                    if (this.currentLength < this.targetLength) {
+                        this.currentLength += this.growthSpeed;
+                        if (this.currentLength > this.targetLength) {
+                            this.currentLength = this.targetLength;
+                        }
+                    } else if (this.children.length < this.maxChildren && this.depth < this.maxDepth && 
+                               (this.particleCount >= this.particlesNeededToGrow || Math.random() < this.branchProbability)) {
+                        this.branch();
+                        this.particleCount -= this.particlesNeededToGrow;
+                    }
+                }
+
+                this.children.forEach(child => child.update());
+            }
+
+            branch() {
+                const spreadAngle = Math.PI / 2;
+                const branchAngle = this.angle + (Math.random() - 0.5) * spreadAngle;
+                const lengthFactor = 0.7 + Math.random() * 0.6;
+                const branchLength = this.targetLength * lengthFactor;
+                const newNode = new Node(this.targetX, this.targetY, branchAngle, branchLength, this.depth + 1, this.color, this.rootIndex);
+                this.children.push(newNode);
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                const endX = this.x + Math.cos(this.angle) * this.currentLength;
+                const endY = this.y + Math.sin(this.angle) * this.currentLength;
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = Math.max(3 - this.depth * 0.2, 0.5);
+                ctx.stroke();
+
+                this.children.forEach(child => child.draw());
+            }
+
+            getSegments() {
+                let segments = [{
+                    x1: this.x, y1: this.y,
+                    x2: this.x + Math.cos(this.angle) * this.currentLength,
+                    y2: this.y + Math.sin(this.angle) * this.currentLength,
+                    node: this
+                }];
+                this.children.forEach(child => segments = segments.concat(child.getSegments()));
+                return segments;
+            }
+
+            receiveParticle() {
+                this.particleCount++;
+                this.energy = Math.min(this.energy + 10, 100);
+            }
+        }
+
+        class BattleNode {
+            constructor(x, y, node1, node2) {
+                this.x = x;
+                this.y = y;
+                this.node1 = node1;
+                this.node2 = node2;
+                this.energy1 = 50;
+                this.energy2 = 50;
+                this.maxEnergy = 100;
+                this.energyDecayRate = 0.075;
+                node1.blocked = true;
+                node2.blocked = true;
+                node1.blockingBattleNode = this;
+                node2.blockingBattleNode = this;
+            }
+
+            update() {
+                this.energy1 = Math.max(0, this.energy1 - this.energyDecayRate * simulationSpeed);
+                this.energy2 = Math.max(0, this.energy2 - this.energyDecayRate * simulationSpeed);
+
+                if (this.energy1 <= 0 || this.energy2 <= 0) {
+                    this.resolveConflict();
+                    return false;
+                }
+                return true;
+            }
+
+            receiveParticle(fromNode) {
+                const baseEnergyBoost = 5;
+                if (fromNode === this.node1) {
+                    this.energy1 = Math.min(this.maxEnergy, this.energy1 + baseEnergyBoost);
+                } else if (fromNode === this.node2) {
+                    this.energy2 = Math.min(this.maxEnergy, this.energy2 + baseEnergyBoost);
+                }
+            }
+
+            resolveConflict() {
+                const winner = this.energy1 > this.energy2 ? this.node1 : this.node2;
+                const loser = winner === this.node1 ? this.node2 : this.node1;
+                
+                winner.blocked = false;
+                winner.blockingBattleNode = null;
+                loser.blocked = false;
+                loser.blockingBattleNode = null;
+
+                const index = battleNodes.indexOf(this);
+                if (index > -1) {
+                    battleNodes.splice(index, 1);
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'crimson';
+                ctx.fill();
+
+                // energy bars
+                const barWidth = 20;
+                const barHeight = 2;
+                ctx.fillStyle = this.node1.color;
+                ctx.fillRect(this.x - barWidth / 2, this.y - 15, barWidth * (this.energy1 / this.maxEnergy), barHeight);
+                ctx.fillStyle = this.node2.color;
+                ctx.fillRect(this.x - barWidth / 2, this.y - 10, barWidth * (this.energy2 / this.maxEnergy), barHeight);
+            }
+        }
+
+        class Particle {
+            constructor(startNode, color, targetBattleNode = null) {
+                this.startNode = startNode;
+                this.currentNode = startNode;
+                this.color = color;
+                this.speed = 2 * simulationSpeed;
+                this.radius = 1.5;
+                this.progress = 0;
+                this.targetBattleNode = targetBattleNode;
+            }
+
+            update() {
+                if (this.targetBattleNode) {
+                    const dx = this.targetBattleNode.x - this.startNode.x;
+                    const dy = this.targetBattleNode.y - this.startNode.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    this.progress += this.speed / distance;
+
+                    if (this.progress >= 1) {
+                        this.targetBattleNode.receiveParticle(this.startNode);
+                        return false;
+                    }
+                } else {
+                    this.progress += this.speed / this.currentNode.targetLength;
+
+                    if (this.progress >= 1) {
+                        if (this.currentNode.blocked) {
+                            this.targetBattleNode = this.currentNode.blockingBattleNode;
+                            this.progress = 0;
+                        } else if (this.currentNode.children.length === 0) {
+                            this.currentNode.receiveParticle();
+                            return false;
+                        } else {
+                            this.progress = 0;
+                            this.currentNode = this.selectNextNode(this.currentNode);
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            selectNextNode(node) {
+                if (node.children.length === 0) return node;
+                return node.children[Math.floor(Math.random() * node.children.length)];
+            }
+
+            draw() {
+                let x, y;
+                if (this.targetBattleNode) {
+                    x = this.currentNode.x + (this.targetBattleNode.x - this.currentNode.x) * this.progress;
+                    y = this.currentNode.y + (this.targetBattleNode.y - this.currentNode.y) * this.progress;
+                } else {
+                    x = this.currentNode.x + (this.currentNode.targetX - this.currentNode.x) * this.progress;
+                    y = this.currentNode.y + (this.currentNode.targetY - this.currentNode.y) * this.progress;
+                }
+
+                ctx.beginPath();
+                ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+        
+        // Functions
+        function initSimulation() {
+            width = canvas.width;
+            height = canvas.height;
+            rootNodes = [];
+            particles = [];
+            battleNodes = [];
+
+            const numFlowers = 2;
+            const petalCount = 9;
+            const colors = [currentTheme.primary, currentTheme.secondary, currentTheme.tertiary, currentTheme.quaternary];
+
+            const basePositions = [
+                { x: width * 0.15, y: height * 0.8 },  
+                { x: width * 0.85, y: height * 0.2 }   
+            ];
+
+            const flipHorizontal = Math.random() < 0.5;
+            const flipVertical = Math.random() < 0.5;
+
+            const flowerPositions = basePositions.map(pos => ({
+                x: flipHorizontal ? width - pos.x : pos.x,
+                y: flipVertical ? height - pos.y : pos.y
+            }));
+
+            flowerPositions.forEach(pos => {
+                pos.x += (Math.random() - 0.5) * width * 0.1;
+                pos.y += (Math.random() - 0.5) * height * 0.1;
+            });
+
+            for (let f = 0; f < numFlowers; f++) {
+                const centerX = flowerPositions[f].x;
+                const centerY = flowerPositions[f].y;
+                const color = colors[f % colors.length];
+
+                for (let i = 0; i < petalCount; i++) {
+                    const angle = (i / petalCount) * Math.PI * 2;
+                    const startX = centerX + Math.cos(angle) * 10;
+                    const startY = centerY + Math.sin(angle) * 10;
+                    rootNodes.push(new Node(startX, startY, angle, 50, 0, color, rootNodes.length));
+                }
+            }
+
+            saveToLocalStorage();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('fractalEcosystem_theme', JSON.stringify(currentTheme));
+            localStorage.setItem('fractalEcosystem_speed', simulationSpeed);
+            
+            const simulationState = {
+                rootNodes: rootNodes.map(node => ({
+                    x: node.x,
+                    y: node.y,
+                    targetX: node.targetX,
+                    targetY: node.targetY,
+                    currentLength: node.currentLength,
+                    targetLength: node.targetLength,
+                    angle: node.angle,
+                    depth: node.depth,
+                    color: node.color,
+                    rootIndex: node.rootIndex,
+                    energy: node.energy,
+                    particleCount: node.particleCount,
+                    blocked: node.blocked
+                })),
+                battleNodes: battleNodes.map(bn => ({
+                    x: bn.x,
+                    y: bn.y,
+                    energy1: bn.energy1,
+                    energy2: bn.energy2,
+                    node1Index: rootNodes.indexOf(bn.node1),
+                    node2Index: rootNodes.indexOf(bn.node2)
+                }))
+            };
+            localStorage.setItem('fractalEcosystem_state', JSON.stringify(simulationState));
+        }
+
+        function loadFromLocalStorage() {
+            const savedTheme = localStorage.getItem('fractalEcosystem_theme');
+            if (savedTheme) {
+                currentTheme = JSON.parse(savedTheme);
+                updateSelectedTheme();
+            }
+
+            const savedSpeed = localStorage.getItem('fractalEcosystem_speed');
+            if (savedSpeed) {
+                simulationSpeed = parseFloat(savedSpeed);
+                speedControl.value = simulationSpeed * 50;
+                speedValue.textContent = speedControl.value;
+            }
+
+            const savedState = localStorage.getItem('fractalEcosystem_state');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                rootNodes = state.rootNodes.map(node => {
+                    const newNode = new Node(node.x, node.y, node.angle, node.targetLength, node.depth, node.color, node.rootIndex);
+                    newNode.targetX = node.targetX;
+                    newNode.targetY = node.targetY;
+                    newNode.currentLength = node.currentLength;
+                    newNode.energy = node.energy;
+                    newNode.particleCount = node.particleCount;
+                    newNode.blocked = node.blocked;
+                    return newNode;
+                });
+                battleNodes = state.battleNodes.map(bn => {
+                    const battleNode = new BattleNode(bn.x, bn.y, rootNodes[bn.node1Index], rootNodes[bn.node2Index]);
+                    battleNode.energy1 = bn.energy1;
+                    battleNode.energy2 = bn.energy2;
+                    return battleNode;
+                });
+            } else {
+                initSimulation();
+            }
+        }
+        
+        function findIntersections() {
+            const allSegments = rootNodes.flatMap(node => node.getSegments());
+            
+            for (let i = 0; i < allSegments.length; i++) {
+                for (let j = i + 1; j < allSegments.length; j++) {
+                    const seg1 = allSegments[i];
+                    const seg2 = allSegments[j];
+                    
+                    if (seg1.node.rootIndex !== seg2.node.rootIndex && 
+                        seg1.node.color !== seg2.node.color && 
+                        !seg1.node.blocked && !seg2.node.blocked) {
+                        const intersection = lineIntersection(seg1, seg2);
+                        if (intersection) {
+                            const nearbyBattle = battleNodes.find(bn => 
+                                Math.hypot(bn.x - intersection.x, bn.y - intersection.y) < 10
+                            );
+                            if (!nearbyBattle) {
+                                battleNodes.push(new BattleNode(intersection.x, intersection.y, seg1.node, seg2.node));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        function lineIntersection(seg1, seg2) {
+            const x1 = seg1.x1, y1 = seg1.y1, x2 = seg1.x2, y2 = seg1.y2;
+            const x3 = seg2.x1, y3 = seg2.y1, x4 = seg2.x2, y4 = seg2.y2;
+
+            const den = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (den == 0) return null;
+
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / den;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / den;
+
+            if (ua < 0 || ua > 1 || ub < 0 || ub > 1) return null;
+            const x = x1 + ua * (x2 - x1);
+            const y = y1 + ua * (y2 - y1);
+
+            return {x, y};
+        }
+        
+        function updateSimulation() {
+            rootNodes.forEach(node => node.update());
+            findIntersections();
+            battleNodes = battleNodes.filter(node => node.update());
+            updateParticles();
+            spawnParticles();
+
+        
+            if (frameCount % 100 === 0) {
+                saveToLocalStorage();
+            }
+            frameCount++;
+        }
+
+        function updateParticles() {
+            particles = particles.filter(particle => particle.update());
+        }
+
+        function spawnParticles() {
+            rootNodes.forEach((root) => {
+                if (Math.random() < 0.6 * simulationSpeed) {
+                    particles.push(new Particle(root, root.color));
+                }
+                
+                if (Math.random() < 0.1 * simulationSpeed) {
+                    const battleNode = battleNodes.find(bn => bn.node1 === root || bn.node2 === root);
+                    if (battleNode) {
+                        particles.push(new Particle(root, root.color, battleNode));
+                    }
+                }
+            });
+        }
+
+        function drawSimulation() {
+            ctx.fillStyle = currentTheme.background;
+            ctx.fillRect(0, 0, width, height);
+
+            rootNodes.forEach(node => node.draw());
+            battleNodes.forEach(node => node.draw());
+            particles.forEach(particle => particle.draw());
+        }
+
+        function gameLoop(timestamp) {
+            if (isRunning) {
+                updateSimulation();
+                drawSimulation();
+                updateStats();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function resizeCanvas() {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            
+            if (width !== newWidth || height !== newHeight) {
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                width = newWidth;
+                height = newHeight;
+                
+                initSimulation();
+            }
+            
+            drawSimulation();
+        }
+
+        function updateStats() {
+            if (statsOverlay) {
+                const nodeCounts = rootNodes.map(root => countNodes(root));
+                const totalNodes = nodeCounts.reduce((a, b) => a + b, 0);
+                
+                let statsHTML = `Total Nodes: ${totalNodes}<br>`;
+                statsHTML += '<div style="display: flex; flex-wrap: wrap; align-items: center; margin-top: 5px;">';
+                
+                
+                
+                statsHTML += '</div>';
+                statsOverlay.innerHTML = statsHTML;
+            }
+        }
+
+        function countNodes(node) {
+            let count = 1;
+            for (let child of node.children) {
+                count += countNodes(child);
+            }
+            return count;
+        }
+
+        function initThemeSelector() {
+            themeSelector.innerHTML = '';
+            colorThemes.forEach((theme, index) => {
+                const themeOption = document.createElement('div');
+                themeOption.className = 'theme-option';
+                themeOption.style.backgroundColor = theme.background;
+                themeOption.innerHTML = `
+                    <div class="color-preview" style="background-color: ${theme.primary}"></div>
+                    <div class="color-preview" style="background-color: ${theme.secondary}"></div>
+                    <div class="color-preview" style="background-color: ${theme.tertiary}"></div>
+                    <div class="color-preview" style="background-color: ${theme.quaternary}"></div>
+                `;
+                themeOption.addEventListener('click', () => selectTheme(index));
+                themeSelector.appendChild(themeOption);
+            });
+            updateSelectedTheme();
+        }
+
+        function selectTheme(index) {
+            currentTheme = colorThemes[index];
+            updateSelectedTheme();
+            initSimulation();
+            drawSimulation();
+            saveToLocalStorage();
+        }
+
+        function updateSelectedTheme() {
+            const themeOptions = document.querySelectorAll('.theme-option');
+            themeOptions.forEach((option, index) => {
+                option.classList.toggle('selected', colorThemes[index] === currentTheme);
+            });
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', resizeCanvas);
+
+        startStopBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startStopBtn.textContent = isRunning ? 'Stop' : 'Start';
+            if (isRunning) {
+                requestAnimationFrame(gameLoop);
+            } else {
+                saveToLocalStorage();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            initSimulation();
+            drawSimulation();
+            updateStats();
+        });
+
+        togglePanel.addEventListener('click', () => {
+            sidePanel.classList.toggle('collapsed');
+            togglePanel.classList.toggle('collapsed');
+            
+            setTimeout(() => {
+                const newWidth = window.innerWidth;
+                const newHeight = window.innerHeight;
+                
+                if (width !== newWidth || height !== newHeight) {
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    width = newWidth;
+                    height = newHeight;
+                    
+                    initSimulation();
+                }
+                
+                drawSimulation();
+            }, 300);
+        });
+
+        speedControl.addEventListener('input', () => {
+            simulationSpeed = speedControl.value / 50;
+            speedValue.textContent = `${speedControl.value}`;
+            saveToLocalStorage();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initThemeSelector();
+            resizeCanvas();
+            loadFromLocalStorage();
+            updateStats();
+            drawSimulation();
+        });
+    </script>
+</body>
+</html>
